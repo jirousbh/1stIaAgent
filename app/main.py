@@ -24,12 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Montar arquivos estáticos (se houver uma interface web)
-try:
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
-    templates = Jinja2Templates(directory="app/templates")
-except:
-    pass
+# Montar arquivos estáticos e configurar templates
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+templates = Jinja2Templates(directory="app/templates")
 
 # Incluir routers
 app.include_router(llm.router, prefix="/api/llm", tags=["LLM"])
@@ -39,10 +36,7 @@ app.include_router(vision.router, prefix="/api/vision", tags=["Vision"])
 
 @app.get("/")
 async def root(request: Request):
-    try:
-        return templates.TemplateResponse("index.html", {"request": request})
-    except:
-        return {"message": "Bem-vindo ao AI Agent API. Acesse /docs para a documentação."}
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/health")
 async def health():

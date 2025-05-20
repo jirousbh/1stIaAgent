@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import httpx
 import os
 import json
+import asyncio
 
 router = APIRouter()
 
@@ -67,6 +69,81 @@ async def generate_text(request: PromptRequest):
             return PromptResponse(text=full_response, model=request.model)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
+
+@router.post("/stream")
+async def stream_text(request: PromptRequest):
+    """
+    Gera texto usando modelos LLM via Ollama com streaming
+    """
+    async def generate_stream():
+        try:
+            ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+            
+            # Criar um cliente com um timeout maior para streaming
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                # Iniciar a requisição de streaming
+                async with client.stream(
+                    "POST",
+                    f"{ollama_host}/api/generate",
+                    json={
+                        "model": request.model,
+                        "prompt": request.prompt,
+                        "system": request.system_prompt,
+                        "stream": True,  # Ativar streaming
+                        "options": {
+                            "temperature": request.temperature,
+                            "num_predict": request.max_tokens
+                        }
+                    },
+                    headers={"Accept": "application/json"}
+                ) as response:
+                    if response.status_code != 200:
+                        error_detail = await response.text()
+                        error_msg = json.dumps({"error": f"Erro na API Ollama: {error_detail}"})
+                        yield f"data: {error_msg}\n\n"
+                        return
+                    
+                    # Processar cada chunk da resposta
+                    async for chunk in response.aiter_text():
+                        if not chunk.strip():
+                            continue
+                        
+                        try:
+                            # Cada linha é um objeto JSON separado
+                            for line in chunk.strip().split("\n"):
+                                if not line:
+                                    continue
+                                    
+                                data = json.loads(line)
+                                # Enviar apenas a parte da resposta
+                                if "response" in data:
+                                    # Formato SSE (Server-Sent Events)
+                                    # Enviar apenas a parte da resposta atual
+                                    yield f"data: {json.dumps({'text': data['response'], 'done': data.get('done', False)})}\n\n"
+                                    
+                                    # Se a geração foi concluída, finalizar o stream
+                                    if data.get("done", False):
+                                        break
+                                        
+                        except json.JSONDecodeError as e:
+                            yield f"data: {json.dumps({'error': f'Erro no parsing JSON: {str(e)}'})}\n\n"
+                    
+                    # Sinalizar o fim do streaming
+                    yield f"data: {json.dumps({'done': True})}\n\n"
+                    
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'Erro: {str(e)}'})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+    
+    # Retornar a resposta de streaming
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 @router.get("/models")
 async def list_models():
