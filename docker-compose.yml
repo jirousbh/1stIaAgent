@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"  # FastAPI
+    volumes:
+      - ./:/app
+      - ollama_models:/root/.ollama
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - ENV=development
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    mem_limit: 8g  # Limitar a 8GB de RAM
+    memswap_limit: 10g  # Limitar swap + memória a 10GB
+    shm_size: 2g  # Aumentar o tamanho da memória compartilhada
+
+volumes:
+  ollama_models: 

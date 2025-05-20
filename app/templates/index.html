@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IA Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+            background-color: #f8f9fa;
+        }
+        .tab-content {
+            padding: 20px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .result-area {
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="mb-4">
+            <h1 class="text-center">IA Agent</h1>
+            <p class="text-center text-muted">Um agente de IA com múltiplas capacidades</p>
+        </header>
+
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="llm-tab" data-bs-toggle="tab" data-bs-target="#llm" type="button" role="tab" aria-controls="llm" aria-selected="true">LLM</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tts-tab" data-bs-toggle="tab" data-bs-target="#tts" type="button" role="tab" aria-controls="tts" aria-selected="false">TTS</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stt-tab" data-bs-toggle="tab" data-bs-target="#stt" type="button" role="tab" aria-controls="stt" aria-selected="false">STT</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="vision-tab" data-bs-toggle="tab" data-bs-target="#vision" type="button" role="tab" aria-controls="vision" aria-selected="false">Visão</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <!-- LLM Tab -->
+            <div class="tab-pane fade show active" id="llm" role="tabpanel" aria-labelledby="llm-tab">
+                <h3>Geração de Texto com LLM</h3>
+                <form id="llm-form">
+                    <div class="mb-3">
+                        <label for="llm-model" class="form-label">Modelo</label>
+                        <select class="form-select" id="llm-model">
+                            <option value="tinyllama" selected>TinyLlama (1.1B)</option>
+                            <option value="phi">Phi-2 (2.7B)</option>
+                            <option value="llama3">Llama 3 (8B)</option>
+                            <option value="mistral">Mistral 7B</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="llm-prompt" class="form-label">Prompt</label>
+                        <textarea class="form-control" id="llm-prompt" rows="3" placeholder="Digite seu prompt aqui..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="llm-system" class="form-label">Prompt do Sistema</label>
+                        <textarea class="form-control" id="llm-system" rows="2" placeholder="Instruções para o modelo...">Você é um assistente útil e amigável.</textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="llm-temperature" class="form-label">Temperatura: <span id="temp-value">0.7</span></label>
+                            <input type="range" class="form-range" id="llm-temperature" min="0" max="1" step="0.1" value="0.7">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="llm-max-tokens" class="form-label">Tokens Máximos</label>
+                            <input type="number" class="form-control" id="llm-max-tokens" value="1000" min="10" max="4096">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Gerar Texto</button>
+                </form>
+                <div class="loading" id="llm-loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p>Gerando texto...</p>
+                </div>
+                <div class="result-area" id="llm-result"></div>
+            </div>
+
+            <!-- TTS Tab -->
+            <div class="tab-pane fade" id="tts" role="tabpanel" aria-labelledby="tts-tab">
+                <h3>Conversão de Texto para Fala</h3>
+                <form id="tts-form">
+                    <div class="mb-3">
+                        <label for="tts-engine" class="form-label">Engine</label>
+                        <select class="form-select" id="tts-engine">
+                            <option value="coqui">Coqui TTS</option>
+                            <option value="piper">Piper</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tts-voice" class="form-label">Voz</label>
+                        <select class="form-select" id="tts-voice">
+                            <option value="pt_br_female">Português (BR) - Feminina</option>
+                            <option value="pt_br_male">Português (BR) - Masculina</option>
+                            <option value="en_us_female">Inglês (US) - Feminina</option>
+                            <option value="en_us_male">Inglês (US) - Masculina</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tts-text" class="form-label">Texto</label>
+                        <textarea class="form-control" id="tts-text" rows="3" placeholder="Digite o texto para converter em áudio..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tts-speed" class="form-label">Velocidade: <span id="speed-value">1.0</span></label>
+                        <input type="range" class="form-range" id="tts-speed" min="0.5" max="2" step="0.1" value="1.0">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Gerar Áudio</button>
+                </form>
+                <div class="loading" id="tts-loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p>Gerando áudio...</p>
+                </div>
+                <div class="result-area" id="tts-result">
+                    <p>O áudio aparecerá aqui.</p>
+                </div>
+            </div>
+
+            <!-- STT Tab -->
+            <div class="tab-pane fade" id="stt" role="tabpanel" aria-labelledby="stt-tab">
+                <h3>Conversão de Fala para Texto</h3>
+                <form id="stt-form">
+                    <div class="mb-3">
+                        <label for="stt-model" class="form-label">Modelo Whisper</label>
+                        <select class="form-select" id="stt-model">
+                            <option value="tiny">Tiny - Muito rápido, menos preciso</option>
+                            <option value="base" selected>Base - Equilibrado</option>
+                            <option value="small">Small - Mais preciso</option>
+                            <option value="medium">Medium - Muito preciso, mais lento</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stt-language" class="form-label">Idioma (opcional)</label>
+                        <select class="form-select" id="stt-language">
+                            <option value="">Auto-detecção</option>
+                            <option value="pt">Português</option>
+                            <option value="en">Inglês</option>
+                            <option value="es">Espanhol</option>
+                            <option value="fr">Francês</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stt-file" class="form-label">Arquivo de Áudio</label>
+                        <input class="form-control" type="file" id="stt-file" accept=".mp3,.wav,.ogg,.flac,.m4a">
+                        <div class="form-text">Formatos aceitos: MP3, WAV, OGG, FLAC, M4A</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Transcrever</button>
+                </form>
+                <div class="loading" id="stt-loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p>Transcrevendo áudio...</p>
+                </div>
+                <div class="result-area" id="stt-result">
+                    <p>A transcrição aparecerá aqui.</p>
+                </div>
+            </div>
+
+            <!-- Vision Tab -->
+            <div class="tab-pane fade" id="vision" role="tabpanel" aria-labelledby="vision-tab">
+                <h3>Análise de Imagem</h3>
+                <form id="vision-form">
+                    <div class="mb-3">
+                        <label for="vision-task" class="form-label">Tarefa</label>
+                        <select class="form-select" id="vision-task">
+                            <option value="caption">Gerar Descrição (BLIP-2)</option>
+                            <option value="classify">Classificar Imagem (CLIP)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="vision-file" class="form-label">Imagem</label>
+                        <input class="form-control" type="file" id="vision-file" accept=".jpg,.jpeg,.png,.webp">
+                        <div class="form-text">Formatos aceitos: JPG, PNG, WEBP</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Analisar</button>
+                </form>
+                <div class="loading" id="vision-loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p>Analisando imagem...</p>
+                </div>
+                <div class="result-area" id="vision-result">
+                    <p>O resultado aparecerá aqui.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Atualizar valores dos sliders
+        document.getElementById('llm-temperature').addEventListener('input', function() {
+            document.getElementById('temp-value').textContent = this.value;
+        });
+        
+        document.getElementById('tts-speed').addEventListener('input', function() {
+            document.getElementById('speed-value').textContent = this.value;
+        });
+
+        // LLM Form
+        document.getElementById('llm-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const result = document.getElementById('llm-result');
+            const loading = document.getElementById('llm-loading');
+            
+            try {
+                loading.style.display = 'block';
+                result.textContent = '';
+                
+                const response = await fetch('/api/llm/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: document.getElementById('llm-model').value,
+                        prompt: document.getElementById('llm-prompt').value,
+                        system_prompt: document.getElementById('llm-system').value,
+                        temperature: parseFloat(document.getElementById('llm-temperature').value),
+                        max_tokens: parseInt(document.getElementById('llm-max-tokens').value)
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<pre>${data.text}</pre>`;
+                } else {
+                    result.textContent = `Erro: ${data.detail || 'Falha na requisição'}`;
+                }
+            } catch (error) {
+                result.textContent = `Erro: ${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        // TTS Form
+        document.getElementById('tts-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const result = document.getElementById('tts-result');
+            const loading = document.getElementById('tts-loading');
+            
+            try {
+                loading.style.display = 'block';
+                result.innerHTML = '<p>Gerando áudio...</p>';
+                
+                const formData = new FormData();
+                formData.append('text', document.getElementById('tts-text').value);
+                formData.append('engine', document.getElementById('tts-engine').value);
+                formData.append('voice', document.getElementById('tts-voice').value);
+                formData.append('speed', document.getElementById('tts-speed').value);
+                
+                const response = await fetch('/api/tts/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <p>Áudio gerado com sucesso!</p>
+                        <audio controls src="${data.file_url}"></audio>
+                        <p><a href="${data.file_url}" download class="btn btn-sm btn-secondary mt-2">Download</a></p>
+                    `;
+                } else {
+                    result.textContent = `Erro: ${data.detail || 'Falha na requisição'}`;
+                }
+            } catch (error) {
+                result.textContent = `Erro: ${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        // STT Form
+        document.getElementById('stt-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const result = document.getElementById('stt-result');
+            const loading = document.getElementById('stt-loading');
+            const fileInput = document.getElementById('stt-file');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                result.textContent = 'Por favor, selecione um arquivo de áudio.';
+                return;
+            }
+            
+            try {
+                loading.style.display = 'block';
+                result.innerHTML = '<p>Transcrevendo áudio...</p>';
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('model', document.getElementById('stt-model').value);
+                
+                const language = document.getElementById('stt-language').value;
+                if (language) {
+                    formData.append('language', language);
+                }
+                
+                const response = await fetch('/api/stt/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <p><strong>Transcrição:</strong></p>
+                        <p>${data.text}</p>
+                        <p><small>Idioma detectado: ${data.language}, Modelo: ${data.model}</small></p>
+                    `;
+                } else {
+                    result.textContent = `Erro: ${data.detail || 'Falha na requisição'}`;
+                }
+            } catch (error) {
+                result.textContent = `Erro: ${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        // Vision Form
+        document.getElementById('vision-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const result = document.getElementById('vision-result');
+            const loading = document.getElementById('vision-loading');
+            const fileInput = document.getElementById('vision-file');
+            const task = document.getElementById('vision-task').value;
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                result.textContent = 'Por favor, selecione uma imagem.';
+                return;
+            }
+            
+            try {
+                loading.style.display = 'block';
+                result.innerHTML = '<p>Analisando imagem...</p>';
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                let url = '';
+                if (task === 'caption') {
+                    url = '/api/vision/caption';
+                    formData.append('model', 'blip2');
+                } else if (task === 'classify') {
+                    url = '/api/vision/classify';
+                    formData.append('model', 'clip');
+                    formData.append('num_categories', 5);
+                }
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (task === 'caption') {
+                        result.innerHTML = `
+                            <p><strong>Descrição da imagem:</strong></p>
+                            <p>${data.caption}</p>
+                        `;
+                    } else if (task === 'classify') {
+                        let categoriesHtml = '<ul>';
+                        data.categories.forEach(category => {
+                            const percentage = (category.score * 100).toFixed(2);
+                            categoriesHtml += `<li>${category.category}: ${percentage}%</li>`;
+                        });
+                        categoriesHtml += '</ul>';
+                        
+                        result.innerHTML = `
+                            <p><strong>Categorias detectadas:</strong></p>
+                            ${categoriesHtml}
+                        `;
+                    }
+                } else {
+                    result.textContent = `Erro: ${data.detail || 'Falha na requisição'}`;
+                }
+            } catch (error) {
+                result.textContent = `Erro: ${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 

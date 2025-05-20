@@ -1,0 +1,21 @@
+fastapi==0.103.1
+uvicorn==0.23.2
+python-dotenv==1.0.0
+langchain==0.0.311
+langchain-community==0.0.9
+transformers==4.34.0
+torch==2.0.1
+httpx==0.25.0
+pillow==10.0.1
+numpy==1.24.3
+python-multipart==0.0.6
+openai-whisper==20230918
+TTS==0.17.5  # Coqui TTS
+piper-tts==1.2.0  # Piper
+protobuf==4.24.3
+timm==0.9.7  # Para modelos de visão
+sentencepiece==0.1.99
+einops==0.7.0
+accelerate==0.23.0
+pydantic==2.4.2
+jinja2==3.1.2 
