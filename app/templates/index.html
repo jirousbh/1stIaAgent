@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IA Agent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
             padding-top: 20px;
@@ -170,11 +171,44 @@
                             <option value="fr">Francês</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="stt-file" class="form-label">Arquivo de Áudio</label>
-                        <input class="form-control" type="file" id="stt-file" accept=".mp3,.wav,.ogg,.flac,.m4a">
-                        <div class="form-text">Formatos aceitos: MP3, WAV, OGG, FLAC, M4A</div>
+                    
+                    <ul class="nav nav-tabs mb-3" id="stt-input-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-audio" type="button" role="tab" aria-selected="true">Upload de Arquivo</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="record-tab" data-bs-toggle="tab" data-bs-target="#record-audio" type="button" role="tab" aria-selected="false">Gravar Áudio</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="stt-input-content">
+                        <div class="tab-pane fade show active" id="upload-audio" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="stt-file" class="form-label">Arquivo de Áudio</label>
+                                <input class="form-control" type="file" id="stt-file" accept=".mp3,.wav,.ogg,.flac,.m4a">
+                                <div class="form-text">Formatos aceitos: MP3, WAV, OGG, FLAC, M4A</div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="record-audio" role="tabpanel">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-center gap-2 mb-3">
+                                    <button type="button" id="stt-record-btn" class="btn btn-danger">
+                                        <i class="bi bi-mic-fill"></i> Iniciar Gravação
+                                    </button>
+                                    <button type="button" id="stt-stop-btn" class="btn btn-secondary" disabled>
+                                        <i class="bi bi-stop-fill"></i> Parar
+                                    </button>
+                                </div>
+                                <div id="stt-record-status" class="text-center mb-2"></div>
+                                <div id="stt-recording-preview" class="d-none">
+                                    <p>Áudio gravado:</p>
+                                    <audio id="stt-recording-audio" controls class="w-100"></audio>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <button type="submit" class="btn btn-primary">Transcrever</button>
                 </form>
                 <div class="loading" id="stt-loading">
@@ -228,6 +262,38 @@
         
         document.getElementById('tts-speed').addEventListener('input', function() {
             document.getElementById('speed-value').textContent = this.value;
+        });
+        
+        // Atualiza as vozes disponíveis quando o engine é alterado
+        document.getElementById('tts-engine').addEventListener('change', function() {
+            const voiceSelect = document.getElementById('tts-voice');
+            const selectedEngine = this.value;
+            
+            // Limpar opções atuais
+            voiceSelect.innerHTML = '';
+            
+            // Adicionar vozes com base no engine selecionado
+            if (selectedEngine === 'coqui') {
+                // Vozes para Coqui TTS
+                [
+                    { value: 'pt_br_female', text: 'Português (BR) - Feminina' },
+                    { value: 'pt_br_male', text: 'Português (BR) - Masculina' },
+                    { value: 'en_us_female', text: 'Inglês (US) - Feminina' },
+                    { value: 'en_us_male', text: 'Inglês (US) - Masculina' }
+                ].forEach(voice => {
+                    const option = new Option(voice.text, voice.value);
+                    voiceSelect.add(option);
+                });
+            } else if (selectedEngine === 'piper') {
+                // Vozes para Piper TTS
+                [
+                    { value: 'pt_BR-16000', text: 'Português (BR) - Piper' },
+                    { value: 'en_US-22050', text: 'Inglês (US) - Piper' }
+                ].forEach(voice => {
+                    const option = new Option(voice.text, voice.value);
+                    voiceSelect.add(option);
+                });
+            }
         });
 
         // LLM Form
@@ -364,15 +430,22 @@
                 loading.style.display = 'block';
                 result.innerHTML = '<p>Gerando áudio...</p>';
                 
-                const formData = new FormData();
-                formData.append('text', document.getElementById('tts-text').value);
-                formData.append('engine', document.getElementById('tts-engine').value);
-                formData.append('voice', document.getElementById('tts-voice').value);
-                formData.append('speed', document.getElementById('tts-speed').value);
+                const text = document.getElementById('tts-text').value;
+                const engine = document.getElementById('tts-engine').value;
+                const voice = document.getElementById('tts-voice').value;
+                const speed = parseFloat(document.getElementById('tts-speed').value);
                 
                 const response = await fetch('/api/tts/generate', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        engine: engine,
+                        voice: voice,
+                        speed: speed
+                    })
                 });
                 
                 const data = await response.json();
@@ -399,23 +472,39 @@
             const result = document.getElementById('stt-result');
             const loading = document.getElementById('stt-loading');
             const fileInput = document.getElementById('stt-file');
-            
-            if (!fileInput.files || fileInput.files.length === 0) {
-                result.textContent = 'Por favor, selecione um arquivo de áudio.';
-                return;
-            }
+            const isRecordingTab = document.getElementById('record-tab').classList.contains('active');
             
             try {
                 loading.style.display = 'block';
                 result.innerHTML = '<p>Transcrevendo áudio...</p>';
                 
                 const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
                 formData.append('model', document.getElementById('stt-model').value);
                 
                 const language = document.getElementById('stt-language').value;
                 if (language) {
                     formData.append('language', language);
+                }
+                
+                // Decide entre arquivo enviado ou gravado
+                if (isRecordingTab) {
+                    // Usar áudio gravado
+                    if (!recordedBlob) {
+                        result.textContent = 'Por favor, grave um áudio primeiro.';
+                        loading.style.display = 'none';
+                        return;
+                    }
+                    
+                    formData.append('file', recordedBlob, 'recorded_audio.wav');
+                } else {
+                    // Usar arquivo enviado
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        result.textContent = 'Por favor, selecione um arquivo de áudio.';
+                        loading.style.display = 'none';
+                        return;
+                    }
+                    
+                    formData.append('file', fileInput.files[0]);
                 }
                 
                 const response = await fetch('/api/stt/transcribe', {
@@ -440,6 +529,75 @@
                 loading.style.display = 'none';
             }
         });
+
+        // Audio Recording
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordedBlob = null;
+        let recordingTimer = null;
+        let recordingSeconds = 0;
+        
+        // Botões de gravação
+        const recordBtn = document.getElementById('stt-record-btn');
+        const stopBtn = document.getElementById('stt-stop-btn');
+        const recordStatus = document.getElementById('stt-record-status');
+        const recordingPreview = document.getElementById('stt-recording-preview');
+        const recordingAudio = document.getElementById('stt-recording-audio');
+        
+        recordBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+        
+        function startRecording() {
+            audioChunks = [];
+            recordedBlob = null;
+            recordingPreview.classList.add('d-none');
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    
+                    mediaRecorder.addEventListener('dataavailable', event => {
+                        audioChunks.push(event.data);
+                    });
+                    
+                    mediaRecorder.addEventListener('stop', () => {
+                        const audioTracks = stream.getAudioTracks();
+                        audioTracks.forEach(track => track.stop());
+                        
+                        recordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        recordingAudio.src = URL.createObjectURL(recordedBlob);
+                        recordingPreview.classList.remove('d-none');
+                        
+                        recordStatus.textContent = `Gravação concluída (${recordingSeconds}s)`;
+                        clearInterval(recordingTimer);
+                        recordingSeconds = 0;
+                    });
+                    
+                    mediaRecorder.start(100); // Capturar chunks a cada 100ms
+                    recordBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    
+                    // Iniciar timer
+                    recordingSeconds = 0;
+                    recordStatus.textContent = 'Gravando: 0s';
+                    recordingTimer = setInterval(() => {
+                        recordingSeconds++;
+                        recordStatus.textContent = `Gravando: ${recordingSeconds}s`;
+                    }, 1000);
+                })
+                .catch(error => {
+                    console.error('Erro ao acessar o microfone:', error);
+                    recordStatus.textContent = `Erro: ${error.message}`;
+                });
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                recordBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
 
         // Vision Form
         document.getElementById('vision-form').addEventListener('submit', async function(e) {

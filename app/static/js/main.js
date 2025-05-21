@@ -81,8 +81,74 @@ document.addEventListener('DOMContentLoaded', function() {
     const ttsForm = document.getElementById('tts-form');
     const ttsText = document.getElementById('tts-text');
     const ttsVoice = document.getElementById('tts-voice');
+    const ttsEngine = document.getElementById('tts-engine');
     const ttsAudioPlayer = document.getElementById('tts-audio');
     const ttsLoading = document.getElementById('tts-loading');
+    
+    // Carregar lista de vozes da API
+    async function loadVoices() {
+        try {
+            const response = await fetch('/api/tts/voices');
+            if (response.ok) {
+                const voices = await response.json();
+                return voices;
+            }
+        } catch (error) {
+            console.error('Erro ao carregar vozes:', error);
+        }
+        return null;
+    }
+    
+    // Atualizar seletor de vozes com base no engine selecionado
+    async function updateVoiceOptions() {
+        const voices = await loadVoices();
+        if (!voices) return;
+        
+        const engine = ttsEngine.value;
+        const engineVoices = voices[engine] || [];
+        
+        // Limpar opções atuais
+        ttsVoice.innerHTML = '';
+        
+        // Adicionar novas opções com base no engine
+        if (engine === 'coqui') {
+            // Adicionar vozes Coqui com nomes amigáveis
+            const voiceLabels = {
+                'pt_br_female': 'Português (BR) - Feminina',
+                'pt_br_male': 'Português (BR) - Masculina',
+                'en_us_female': 'Inglês (US) - Feminina',
+                'en_us_male': 'Inglês (US) - Masculina'
+            };
+            
+            engineVoices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice;
+                option.textContent = voiceLabels[voice] || voice;
+                ttsVoice.appendChild(option);
+            });
+        } else if (engine === 'piper') {
+            // Adicionar vozes Piper com nomes amigáveis
+            const voiceLabels = {
+                'pt_BR-16000': 'Português (BR) - Piper',
+                'en_US-22050': 'Inglês (US) - Piper'
+            };
+            
+            engineVoices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice;
+                option.textContent = voiceLabels[voice] || voice;
+                ttsVoice.appendChild(option);
+            });
+        }
+    }
+    
+    // Inicializar vozes quando a página carrega
+    updateVoiceOptions();
+    
+    // Atualizar vozes quando o engine muda
+    if (ttsEngine) {
+        ttsEngine.addEventListener('change', updateVoiceOptions);
+    }
 
     if (ttsForm) {
         ttsForm.addEventListener('submit', async function(e) {
@@ -103,7 +169,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({
                         text: text,
-                        voice: ttsVoice ? ttsVoice.value : undefined
+                        voice: ttsVoice ? ttsVoice.value : undefined,
+                        engine: ttsEngine ? ttsEngine.value : 'coqui',
+                        speed: document.getElementById('tts-speed') ? parseFloat(document.getElementById('tts-speed').value) : 1.0
                     })
                 });
                 

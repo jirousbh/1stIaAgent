@@ -76,7 +76,7 @@ async def list_voices():
             "en_us_male"
         ],
         "piper": [
-            "pt_BR-22050",
+            "pt_BR-16000",
             "en_US-22050"
         ]
     }
