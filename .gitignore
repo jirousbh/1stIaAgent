@@ -38,6 +38,7 @@ venv/
 # App specific
 app/static/audio/
 app/models/features/
+app/models/piper/
 
 # IDEs
 .idea/
